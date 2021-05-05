@@ -22,6 +22,34 @@
 //	THE SOFTWARE.
 // --------------------------------------------------------------------
 
+// --------------------------------------------------------------------
+//	HB-F500 Keyboard support customized By @v9938
+//	
+//	Default pin setting...
+// --------------------------------------------------------------------
+//	DIN Pin : PICO Pin | Function
+// --------------------------------------------------------------------
+//   1      : 32(GP27) | KANA LED (active LOW)
+//   2      : 31(GP26) | CAPS LED (active LOW)
+//   3      : 19(GP14) | KEY DATA0 (X0 Data)
+//   4      : 20(GP15) | KEY DATA1 (X1 Data)
+//   5      : 21(GP16) | KEY DATA2 (X2 Data)
+//   6      : 22(GP17) | KEY DATA3 (X3 Data)
+//   7      : 24(GP18) | KEY DATA4 (X4 Data / Y3 Data)
+//   8      : 25(GP19) | KEY DATA5 (X5 Data / Y2 Data)
+//   9      : 26(GP20) | KEY DATA6 (X6 Data / Y1 Data)
+//   10     : 27(GP21) | KEY DATA7 (X7 Data / Y0 Data)
+//   11     : 4 (GP2)  | KEY CS
+//   12     : 40(VBUS) | +5V
+//   13     : 38(GND)  | GND
+//
+//   PICO IO signal level 3.3V, So DON'T direct connect LED/X/CS signals.
+//   Please connect with resistors of about 10Kohm.
+//
+//   â€»Picoã®IOã¯3.3Vãªã®ã§ç›´çµã¯ã›ãšã«10Kohmç¨‹åº¦ã®æŠµæŠ—ã‚’ç›´åˆ—ã«æŒ¿å…¥ã™ã‚‹ã“ã¨
+// --------------------------------------------------------------------
+
+
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
@@ -32,51 +60,36 @@
 
 // --------------------------------------------------------------------
 //	MSX_KEYMATRIX_ROW_TYPE
-//		0: Y3-Y0  ‚É ROWƒAƒhƒŒƒX‚ªw’è‚³‚ê‚é
-//		1: Y11-Y0 ‚É ROWƒAƒhƒŒƒX‚ğƒfƒR[ƒh‚µ‚½Œ‹‰Ê‚ªw’è‚³‚ê‚é (ONE HOT)
+//		0: Y3-Y0  ã« 
+//		1: Y11-Y0 ã« ROWã‚¢ãƒ‰ãƒ¬ã‚¹ã‚’ãƒ‡ã‚³ãƒ¼ãƒ‰ã—ãŸçµæœãŒæŒ‡å®šã•ã‚Œã‚‹ (ONE HOT)
+//		2: X8-X4 ã« ROWã‚¢ãƒ‰ãƒ¬ã‚¹ãŒæŒ‡å®šã•ã‚Œã‚‹ã€Y0ã«DIR(HB-F500)
 //
-//		0: ROW address is specified for Y3-Y0.
-//		1: The result of decoding the ROW address is specified for Y11-Y0 (ONE HOT)
-//
-#define MSX_KEYMATRIX_ROW_TYPE 1
-
-// --------------------------------------------------------------------
+#define MSX_KEYMATRIX_ROW_TYPE 0
 //	MSX_KEYMATRIX_INV
-//		0: Y11-Y0 ‚Í³˜_—‚Å‚ ‚é
-//		1: Y11-Y0 ‚Í•‰˜_—‚Å‚ ‚é
-//
-//		0: Y11-Y0 is positive logic.
-//		1: Y11-Y0 is negative logic.
+//		0: Y11-Y0 ã¯æ­£è«–ç†ã§ã‚ã‚‹
+//		1: Y11-Y0 ã¯è² è«–ç†ã§ã‚ã‚‹
 //
 #define MSX_KEYMATRIX_INV 1
 
-// --------------------------------------------------------------------
 //	MSX_KEYMATRIX_ROW_PULL_UP
-//		0: Y0-Y11 ‚Ì“ü—Íƒsƒ“‚É “à‘  PULL UP/DOWN ‚Íg‚í‚È‚¢
-//		1: Y0-Y11 ‚Ì“ü—Íƒsƒ“‚É “à‘  PULL UP ‚ğg‚¤
-//		2: Y0-Y11 ‚Ì“ü—Íƒsƒ“‚É “à‘  PULL DOWN ‚ğg‚¤
-//
-//		0: Do not use the built-in PULL UP/DOWN on the Y0-Y11 input pins.
-//		1: Use built-in PULL UP for Y0-Y11 input pins
-//		2: Use built-in PULL DOWN for Y0-Y11 input pins
+//		0: Y0-Y11 ã®å…¥åŠ›ãƒ”ãƒ³ã« å†…è”µ PULL UP/DOWN ã¯ä½¿ã‚ãªã„
+//		1: Y0-Y11 ã®å…¥åŠ›ãƒ”ãƒ³ã« å†…è”µ PULL UP ã‚’ä½¿ã†
+//		2: Y0-Y11 ã®å…¥åŠ›ãƒ”ãƒ³ã« å†…è”µ PULL DOWN ã‚’ä½¿ã†
 //
 #define MSX_KEYMATRIX_ROW_PULL_UP 1
 
-// --------------------------------------------------------------------
 //	MSX_KEYMATRIX_ROW_PIN
-//		Y0 ‚Ì GPIO”Ô†BY1-Y11 ‚ÍA‚±‚±‚©‚çƒCƒ“ƒNƒŠƒƒ“ƒg‚·‚é‚©‚½‚¿‚Ì˜A”Ô
-//
-//		GPIO number of Y0. Y1-Y11 are sequential numbers that are incremented from here.
+//		Y0 ã® GPIOç•ªå·ã€‚Y1-Y11 ã¯ã€ã“ã“ã‹ã‚‰ã‚¤ãƒ³ã‚¯ãƒªãƒ¡ãƒ³ãƒˆã™ã‚‹ã‹ãŸã¡ã®é€£ç•ª
 //
 #define MSX_KEYMATRIX_ROW_PIN 2
 
-// --------------------------------------------------------------------
 //	MSX_KEYMATRIX_RESULT_PIN
-//		X0 ‚Ì GPIO”Ô†BX1-X7 ‚ÍA‚±‚±‚©‚çƒCƒ“ƒNƒŠƒƒ“ƒg‚·‚éŒ`‚Ì˜A”Ô
-//
-//		GPIO number of X0. X1-X7 are sequential numbers that are incremented from here.
+//		X0 ã® GPIOç•ªå·ã€‚X1-X7 ã¯ã€ã“ã“ã‹ã‚‰ã‚¤ãƒ³ã‚¯ãƒªãƒ¡ãƒ³ãƒˆã™ã‚‹å½¢ã®é€£ç•ª
 //
 #define MSX_KEYMATRIX_RESULT_PIN 14
+
+#define MSX_CAPS_LED_PIN 26
+#define MSX_KANA_LED_PIN 27
 
 // --------------------------------------------------------------------
 #define UART_ID uart0
@@ -97,19 +110,12 @@ typedef struct {
 
 // --------------------------------------------------------------------
 //	keymap
-//		keymap[ USBƒL[ƒR[ƒh ] = { y_code, x_code }
+//		keymap[ USBã‚­ãƒ¼ã‚³ãƒ¼ãƒ‰ ] = { y_code, x_code }
 //			y_code:
-//				MSXƒL[ƒ}ƒgƒŠƒNƒX‚Ìs”Ô† 0`15B
-//				-1 ‚É‚·‚é‚ÆA‚»‚ÌƒL[‚Í–³‹‚³‚ê‚éB
+//				MSXã‚­ãƒ¼ãƒãƒˆãƒªã‚¯ã‚¹ã®è¡Œç•ªå· 0ï½15ã€‚
+//				-1 ã«ã™ã‚‹ã¨ã€ãã®ã‚­ãƒ¼ã¯ç„¡è¦–ã•ã‚Œã‚‹ã€‚
 //			x_code: 
-//				MSXƒL[ƒ}ƒgƒŠƒNƒX‚Ìƒrƒbƒg”Ô† 0`7B
-//
-//		keymap[ USB key code ] = { y_code, x_code }
-//			y_code:
-//				MSX key matrix line number 0 to 15.
-//				If set to -1, the key will be ignored.
-//			x_code: 
-//				Bit numbers 0 to 7 of the MSX key matrix.
+//				MSXã‚­ãƒ¼ãƒãƒˆãƒªã‚¯ã‚¹ã®ãƒ“ãƒƒãƒˆç•ªå· 0ï½7ã€‚
 //
 static const KEYMAP_T keymap[] = {
 	{ -1, 0 },		//	HID_KEY_NONE               0x00
@@ -165,7 +171,7 @@ static const KEYMAP_T keymap[] = {
 	{  2, 1 },		//	HID_KEY_EUROPE_1           0x32
 	{  1, 7 },		//	HID_KEY_SEMICOLON          0x33
 	{  2, 0 },		//	HID_KEY_APOSTROPHE         0x34
-	{  7, 2 },		//	‘S/”¼                      0x35
+	{  7, 2 },		//	å…¨/åŠ                      0x35
 	{  2, 2 },		//	HID_KEY_COMMA              0x36
 	{  2, 3 },		//	HID_KEY_PERIOD             0x37
 	{  2, 4 },		//	HID_KEY_SLASH              0x38
@@ -211,7 +217,7 @@ static const KEYMAP_T keymap[] = {
 	{ 10, 3 },		//	HID_KEY_KEYPAD_8           0x60
 	{ 10, 4 },		//	HID_KEY_KEYPAD_9           0x61
 	{  9, 4 },		//	HID_KEY_KEYPAD_0           0x62
-	{ -1, 0 },		//	HID_KEY_KEYPAD_DECIMAL     0x63
+	{ 10, 7 },		//	HID_KEY_KEYPAD_DECIMAL     0x63
 	{ -1, 0 },		//	HID_KEY_EUROPE_2           0x64
 	{  6, 2 },		//	HID_KEY_APPLICATION        0x65  GRAPH
 	{ -1, 0 },		//	HID_KEY_POWER              0x66
@@ -248,10 +254,10 @@ static const KEYMAP_T keymap[] = {
 	{ -1, 0 },		//	                           0x85
 	{ -1, 0 },		//	                           0x86
 	{  2, 5 },		//	                           0x87  _
-	{  6, 4 },		//	‚©‚È (Kana)                0x88  ‚©‚È
-	{  1, 4 },		//	                           0x89    
-	{ 11, 1 },		//	•ÏŠ·                       0x8A  Às
-	{ 11, 3 },		//	–³•ÏŠ·                     0x8B  æÁ
+	{  6, 4 },		//	ã‹ãª                       0x88
+	{  1, 4 },		//	                           0x89  ï¿¥
+	{ 11, 1 },		//	å¤‰æ›                       0x8A  å®Ÿè¡Œ
+	{ 11, 3 },		//	ç„¡å¤‰æ›                     0x8B  å–æ¶ˆ
 	{ -1, 0 },		//	                           0x8C
 	{ -1, 0 },		//	                           0x8D
 	{ -1, 0 },		//	                           0x8E
@@ -379,9 +385,14 @@ static const KEYMAP_T keymap[] = {
 };
 
 // --------------------------------------------------------------------
-static uint8_t volatile msx_key_matrix[16] = {
+static uint8_t msx_key_matrix[16] = {
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
 	0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 
+};
+
+static int y_table[16] = {
+	0x0, 0x8, 0x4, 0xA, 0x2, 0xA, 0x6, 0xA, 
+	0x1, 0x9, 0x5, 0xA, 0x3, 0xA, 0x7, 0xA, 
 };
 
 // --------------------------------------------------------------------
@@ -398,7 +409,7 @@ static void initialization( void ) {
 
 	tusb_init();
 
-	//	Set the GPIO signal direction.
+	//	GPIOã®ä¿¡å·ã®å‘ãã‚’è¨­å®š
 	for( i = 0; i < 12; i++ ) {		// Y0-Y11, 12bits
 		gpio_init( MSX_KEYMATRIX_ROW_PIN + i );
 		gpio_set_dir( MSX_KEYMATRIX_ROW_PIN + i, GPIO_IN );
@@ -411,7 +422,35 @@ static void initialization( void ) {
 	for( i = 0; i < 9; i++ ) {		// X0-X7 and PAUSE, 9bits
 		gpio_init( MSX_KEYMATRIX_RESULT_PIN + i );
 		gpio_set_dir( MSX_KEYMATRIX_RESULT_PIN + i, GPIO_OUT );
+		#if MSX_KEYMATRIX_ROW_PULL_UP == 1
+			gpio_pull_up( MSX_KEYMATRIX_RESULT_PIN + i );
+		#elif MSX_KEYMATRIX_ROW_PULL_UP == 2
+			gpio_pull_down( MSX_KEYMATRIX_RESULT_PIN + i );
+		#endif
 	}
+	// LED Input (CAPS)
+	gpio_init( MSX_CAPS_LED_PIN);
+	gpio_set_dir( MSX_CAPS_LED_PIN, GPIO_IN );
+	#if MSX_KEYMATRIX_ROW_PULL_UP == 1
+		gpio_pull_up( MSX_CAPS_LED_PIN );
+	#elif MSX_KEYMATRIX_ROW_PULL_UP == 2
+		gpio_pull_down( MSX_CAPS_LED_PIN );
+	#endif
+
+	// LED Input (KANA)
+	gpio_init( MSX_KANA_LED_PIN);
+	gpio_set_dir( MSX_KANA_LED_PIN, GPIO_IN );
+	#if MSX_KEYMATRIX_ROW_PULL_UP == 1
+		gpio_pull_up( MSX_KANA_LED_PIN );
+	#elif MSX_KEYMATRIX_ROW_PULL_UP == 2
+		gpio_pull_down( MSX_KANA_LED_PIN );
+	#endif
+	
+
+//    gpio_init(PICO_DEFAULT_LED_PIN);
+//    gpio_set_dir(PICO_DEFAULT_LED_PIN, 1);
+//    gpio_put(PICO_DEFAULT_LED_PIN, 1);
+
 }
 
 // --------------------------------------------------------------------
@@ -430,7 +469,7 @@ static void initialization( void ) {
 
 // --------------------------------------------------------------------
 void response_core( void ) {
-	uint8_t matrix;
+	uint32_t matrix;
 	int y;
 	static const uint32_t x_mask = 0x0FF << MSX_KEYMATRIX_RESULT_PIN;
 	#if DEBUG_UART_ON
@@ -439,20 +478,24 @@ void response_core( void ) {
 	#endif
 
 	for( ;; ) {
-		//	Get Y
-		#if MSX_KEYMATRIX_INV == 0
-			y = (gpio_get_all() >> MSX_KEYMATRIX_ROW_PIN) & 0x0FFF;
-		#else
-			y = ((gpio_get_all() >> MSX_KEYMATRIX_ROW_PIN) & 0x0FFF) ^ 0x0FFF;
-		#endif
+		//	_CSã®Lå¾…ã¡
+		while ((gpio_get_all() & (0x0001 << MSX_KEYMATRIX_ROW_PIN))!=0);
+		//	_CSãŒLã«ãªã£ãŸã®ã§X[4:7]ã®GPIOã‚’Inputã«X[4:7]ã«å…¥åŠ›ã•ã‚Œã‚‹Yã‚¢ãƒ‰ãƒ¬ã‚¹å¾…ã¤
+		gpio_set_dir_in_masked(0x0F0 << MSX_KEYMATRIX_RESULT_PIN);
 
-		#if MSX_KEYMATRIX_ROW_TYPE == 1
-			y = encode( y );
-		#endif
+		//	_CSã®Hå¾…ã¡
+		while ((gpio_get_all() & (0x0001 << MSX_KEYMATRIX_ROW_PIN))==0);
 
-		//	Output X
-		matrix = msx_key_matrix[ y & 0x0F ];
-		gpio_put_masked( x_mask, (uint32_t)matrix << MSX_KEYMATRIX_RESULT_PIN );
+		// X[4:7]ã«å…¥åŠ›ã•ã‚Œã‚‹Yã‚¢ãƒ‰ãƒ¬ã‚¹ã‚’å–å¾—
+		// Yã‚¢ãƒ‰ãƒ¬ã‚¹ã¯BITä¸¦ã³ãŒé€†é †ãªã®ã§ãƒ†ãƒ¼ãƒ–ãƒ«ã‚’ä½¿ã£ã¦åè»¢
+		y = y_table[(gpio_get_all() >> (MSX_KEYMATRIX_RESULT_PIN + 4)) & 0x00f];
+		// Xå‡ºåŠ›æº–å‚™  X[4:7]ã‚’å†åº¦å‡ºåŠ›ã«è¨­å®š
+		gpio_set_dir_out_masked(0x0FF << MSX_KEYMATRIX_RESULT_PIN);
+		
+		//	Yã‚¢ãƒ‰ãƒ¬ã‚¹ã«æ²¿ã£ãŸã€Xã‚’å‡ºåŠ›ã™ã‚‹
+		matrix = (int)msx_key_matrix[ y & 0x0F ] << MSX_KEYMATRIX_RESULT_PIN;
+		gpio_put_masked( x_mask, matrix );
+
 		gpio_put( MSX_KEYMATRIX_RESULT_PIN + 8, msx_key_matrix[ 12 ] & 1 );
 
 		#if DEBUG_UART_ON
@@ -476,7 +519,7 @@ void response_core( void ) {
 }
 
 // --------------------------------------------------------------------
-//	Reflect hid_keyboard_report_t in key_matrix
+//	hid_keyboard_report_t ã‚’ key_matrix ã«åæ˜ ã•ã›ã‚‹
 void update_key_matrix( uint8_t *p_matrix, const hid_keyboard_report_t *p ) {
 	uint8_t i;
 	const KEYMAP_T *p_keymap;
@@ -512,7 +555,7 @@ void hid_task(void) {
 	if( tuh_hid_keyboard_get_report( dev_addr, &usb_keyboard_report ) == TUSB_ERROR_NONE ) {
 		memset( current_key_matrix, 0xFF, sizeof(current_key_matrix) );
 		update_key_matrix( current_key_matrix, &usb_keyboard_report );
-		memcpy( (void*) msx_key_matrix, current_key_matrix, sizeof(current_key_matrix) );
+		memcpy( msx_key_matrix, current_key_matrix, sizeof(current_key_matrix) );
 	}
 }
 
@@ -530,9 +573,31 @@ void led_blinking_task(void) {
     board_led_write(led_state);
     led_state = 1 - led_state; // toggle
 }
+static uint8_t KeyLEDFlags = 0;
 
+void setKeyboardLeds (uint8_t Keyleds) {
+    if ( Keyleds != KeyLEDFlags ){
+        uint8_t const addr = 1;
+        KeyLEDFlags = Keyleds;
+
+        tusb_control_request_t ledreq = {
+            .bmRequestType_bit.recipient = TUSB_REQ_RCPT_INTERFACE,
+            .bmRequestType_bit.type = TUSB_REQ_TYPE_CLASS,
+            .bmRequestType_bit.direction = TUSB_DIR_OUT,
+            .bRequest = HID_REQ_CONTROL_SET_REPORT,
+            .wValue = HID_REPORT_TYPE_OUTPUT << 8,
+            .wIndex = 0,    // Interface number
+            .wLength = sizeof (KeyLEDFlags)
+            };
+    
+        tuh_control_xfer (addr, &ledreq, &KeyLEDFlags, NULL);
+   }
+}
+
+ 
 // --------------------------------------------------------------------
 int main(void) {
+    uint8_t Keyleds = KeyLEDFlags;
 
 	initialization();
 	multicore_launch_core1( response_core );
@@ -541,24 +606,43 @@ int main(void) {
 		tuh_task();
 		led_blinking_task();
 		hid_task();
+
+
+		//KEYBOARD LEDå‡¦ç†
+
+		//  KEYBOARD_LED_NUMLOCK    = TU_BIT(0), ///< Num Lock LED
+		//  KEYBOARD_LED_CAPSLOCK   = TU_BIT(1), ///< Caps Lock LED
+		//  KEYBOARD_LED_SCROLLLOCK = TU_BIT(2), ///< Scroll Lock LED
+		//  KEYBOARD_LED_COMPOSE    = TU_BIT(3), ///< Composition Mode
+		//  KEYBOARD_LED_KANA       = TU_BIT(4) ///< Kana mode
+
+		if (gpio_get(MSX_CAPS_LED_PIN)==0)  Keyleds |= KEYBOARD_LED_CAPSLOCK;
+		else Keyleds &= KEYBOARD_LED_CAPSLOCK ^ 0xFF;
+		
+		//è¦æ ¼ä¸Šã¯KANA LEDã¯å­˜åœ¨ã™ã‚‹ã‘ã©ã€SCROLLLOCKã§ä»£ç”¨
+		//USB98ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ä»¥å¤–ã§ä»˜ã„ã¦ã„ã‚‹ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ã‚’è¦‹ãŸã“ã¨ç„¡ã„ã®ã§
+		if (gpio_get(MSX_KANA_LED_PIN)==0)  Keyleds |= KEYBOARD_LED_SCROLLLOCK;
+		else Keyleds &= KEYBOARD_LED_SCROLLLOCK ^ 0xFF;
+		setKeyboardLeds (Keyleds);
+
 	}
 	return 0;
 }
 
 // --------------------------------------------------------------------
-//	Callback to be called when a keyboard is connected.
+//	ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ãŒæ¥ç¶šã•ã‚ŒãŸã¨ãã«å‘¼ã³å‡ºã•ã‚Œã‚‹ã‚³ãƒ¼ãƒ«ãƒãƒƒã‚¯
 void tuh_hid_keyboard_mounted_cb(uint8_t dev_addr) {
 	(void) dev_addr;
 }
 
 // --------------------------------------------------------------------
-//	Callback to be called when the keyboard is disconnected.
+//	ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ãŒåˆ‡æ–­ã•ã‚ŒãŸã¨ãã«å‘¼ã³å‡ºã•ã‚Œã‚‹ã‚³ãƒ¼ãƒ«ãƒãƒƒã‚¯
 void tuh_hid_keyboard_unmounted_cb( uint8_t dev_addr ) {
 	(void) dev_addr;
 }
 
 // --------------------------------------------------------------------
-//	An interrupt that is called when a key on the keyboard is pressed or released.
+//	ã‚­ãƒ¼ãƒœãƒ¼ãƒ‰ã®ã‚­ãƒ¼ãŒæŠ¼ã•ã‚ŒãŸã‚Šã€æ”¾ã•ã‚ŒãŸã‚Šã™ã‚‹ã¨å‘¼ã³å‡ºã•ã‚Œã‚‹å‰²ã‚Šè¾¼ã¿
 void tuh_hid_keyboard_isr( uint8_t dev_addr, xfer_result_t event ) {
 	(void) dev_addr;
 	(void) event;
